@@ -1,0 +1,225 @@
+---------------------------------------------index.tsx-stock-------------------------------------
+import React from 'react';
+import { Switch } from 'react-router-dom';
+import ErrorBoundaryRoute from 'app/shared/error/error-boundary-route';
+import PickingList from './picking-list';
+import PickingListDetail from './picking-list-detail';
+import PickingListScanBox from './picking-list-scan-box';
+import PickingListLocationDetail from './picking-list-location-detail';
+import PickingListScanLocation from './picking-list-scan-location';
+import PickingListScanSKU from './picking-list-scan-sku';
+import PickingListSKUCount from './picking-list-sku-count';
+import PickingListFinished from './picking-list-finished';
+import PickingListProductDetail from './picking-list-product-detail';
+const Routes = ({ match }) => (
+	<>
+		<Switch>
+			<ErrorBoundaryRoute exact path={`${match.url}/pickingList`} component={PickingList} />
+			<ErrorBoundaryRoute exact path={`${match.url}/pickingListDetail/:picklistId`} component={PickingListDetail} />
+			<ErrorBoundaryRoute exact path={`${match.url}/pickingListScanBox/:index`} component={PickingListScanBox} />
+			<ErrorBoundaryRoute exact path={`${match.url}/pickingListScanSku/:index`} component={PickingListScanSKU} />
+			<ErrorBoundaryRoute exact path={`${match.url}/pickingListLocationDetail/:index`} component={PickingListLocationDetail} />
+			<ErrorBoundaryRoute exact path={`${match.url}/pickingListScanLocation/:index`} component={PickingListScanLocation} />
+			<ErrorBoundaryRoute exact path={`${match.url}/pickingListProductDetail/:index`} component={PickingListProductDetail} />
+			<ErrorBoundaryRoute exact path={`${match.url}/pickingListSKUCount/:index`} component={PickingListSKUCount} />
+			<ErrorBoundaryRoute exact path={`${match.url}/pickingListFinished/:index`} component={PickingListFinished} />
+		</Switch>
+	</>
+);
+export default Routes;
+-----------------------------------------------picking-list.tsx-stock---------------------------------
+import React, { useState, useEffect } from 'react';
+import { connect } from 'react-redux';
+import { Link, RouteComponentProps } from 'react-router-dom';
+import { Row, Col, Badge } from 'reactstrap';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import * as iconName from '@fortawesome/free-solid-svg-icons';
+import { getPickingItems } from './stock.reducer';
+import { IRootState } from 'app/shared/reducers';
+import { InputSwitch } from 'primereact/inputswitch';
+import { Translate } from 'react-jhipster';
+export interface IPickingListProps extends StateProps, DispatchProps, RouteComponentProps<{}> { }
+export const PickingList = (props: IPickingListProps) => {
+	const [sorted, setSorted] = useState(false);
+	useEffect(() => {
+		props.getPickingItems(sorted);
+	}, [sorted]);
+	const { pickingItems, match } = props;
+	return (
+		<div>
+			<div style={{ textAlign: 'center' }}>
+				<div style={{ marginBottom: '16px', textAlign: 'center', fontWeight: 'bold', height: '30px', display: 'inline-flex', alignItems: 'center' }}>
+					<div className="customswitch-content">
+						<Translate contentKey="pickingList.sortSwitch.single" />
+					</div>
+					<div className="customswitch-content">
+						<InputSwitch className="sortedswitch" checked={sorted} onChange={(e) => setSorted(e.value)} />
+					</div>
+					<div className="customswitch-content">
+						<Translate contentKey="pickingList.sortSwitch.sorted" />
+					</div>
+				</div>
+			</div>
+			<hr style={{ marginTop: '10px' }} />
+			{
+				pickingItems && pickingItems.map((p, i) => (
+					<Link style={{ cursor: 'pointer', color: '#424242'}}  to={`/page/stock/pickingListDetail/${p.id}`} key={`pickingItem-${i}`} onClick={e => (p)}>
+						<Row className="justify-content-center">
+							<Col xs="6">
+								<h6>#{p.id}-{p.status} <Badge color="light">{p.totalQuantity}</Badge></h6>
+								<p style={{ color: '#616161', fontSize: '12px' }}>
+								<h5><Badge color="dark">{p.notices}</Badge></h5>
+								<i>{`${p.targetDeliveryDate}`}</i>
+								<div>{p.clientName}</div></p>
+							</Col>
+							<Col xs="2">
+								<h3>{p.listPriority !== 0 ? 
+								<Badge style={p.listPriority > 2 ? {backgroundColor:"#f5c693"} : p.listPriority > 1 ? {backgroundColor:"#f5aa58"}  : {backgroundColor:"#ec8515"}  }>{p.listPriority}</Badge> 
+								: ''}</h3>
+							</Col>
+							<Col xs="2" style={{ textAlign: 'right' }}>
+								<FontAwesomeIcon icon={iconName.faAngleRight} size="2x" color='#e0e0e0' />
+							</Col>
+						</Row>
+						<hr style={{ marginTop: '0px', marginBottom: '10px' }} />
+					</Link>
+				))
+			}
+		</div>
+	);
+};
+const mapStateToProps = (storeState: IRootState) => ({
+	pickingItems: storeState.stock.pickingItems,
+});
+const mapDispatchToProps = { getPickingItems };
+type StateProps = ReturnType<typeof mapStateToProps>;
+type DispatchProps = typeof mapDispatchToProps;
+export default connect(mapStateToProps, mapDispatchToProps)(PickingList);
+-----------------------------------------------------------------------------------index.tsx-stock-order--------------------------------------------------------
+import React from 'react';
+import { Switch } from 'react-router-dom';
+import ErrorBoundaryRoute from 'app/shared/error/error-boundary-route';
+import StockOrder from './stock-order';
+const Routes = ({ match }) => (
+  <>
+    <Switch>
+      <ErrorBoundaryRoute exact path={`${match.url}/:storageId`} component={StockOrder} />
+    </Switch>
+  </>
+);
+export default Routes;
+---------------------------------------------------------------------------------stock-order--------------------------------------------------------------------
+import React, { useState, useEffect } from 'react';
+import { connect } from 'react-redux';
+import { Link, RouteComponentProps } from 'react-router-dom';
+import { Button, Card } from 'reactstrap';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Translate, getSortState, translate } from 'react-jhipster';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ITEMS_PER_PAGE } from 'app/shared/util/pagination.constants';
+import { overridePaginationStateWithQueryParams } from 'app/shared/util/entity-utils';
+import { getOpenStockOrders } from './stock-order.reducer';
+import { IRootState } from 'app/shared/reducers';
+export interface IStockOrderProps extends StateProps, DispatchProps, RouteComponentProps<{ storageId: string }> {}
+export const StockOrder = (props: IStockOrderProps) => {
+  const [pagination, setPagination] = useState(
+    overridePaginationStateWithQueryParams(getSortState(props.location, ITEMS_PER_PAGE), props.location.search)
+  );
+  useEffect(() => {
+    props.getOpenStockOrders(parseInt(props.match.params.storageId, 10));
+    const endURL = `?page=${pagination.activePage}&sort=${pagination.sort},${pagination.order}`;
+    if (props.location.search !== endURL) {
+      props.history.push(`${props.location.pathname}${endURL}`);
+    }
+  }, [pagination.activePage, pagination.order, pagination.sort]);
+  useEffect(() => {
+    const params = new URLSearchParams(props.location.search);
+    const page = params.get('page');
+    const sort = params.get('sort');
+    if (page && sort) {
+      const sortSplit = sort.split(',');
+      setPagination({
+        ...pagination,
+        activePage: +page,
+        sort: sortSplit[0],
+        order: sortSplit[1],
+      });
+    }
+  }, [props.location.search]);
+  const sort = p => () =>
+    setPagination({
+      ...pagination,
+      order: pagination.order === 'asc' ? 'desc' : 'asc',
+      sort: p,
+    });
+  const handlePagination = currentPage =>
+    setPagination({
+      ...pagination,
+      activePage: currentPage,
+    });
+  const actionBodyTemplate = () => {
+    return (
+      <Button style={{ borderRadius: '1.25em' }} type="button" color="info" outline>
+        {' '}
+        <FontAwesomeIcon icon="eye" />{' '}
+      </Button>
+    );
+  };
+  const { stockOrders, match, totalItems } = props;
+  return (
+    <Card body>
+      <div>
+        <h2 id="stock-order-page-heading" style={{ marginBottom: '24px' }}>
+          <Translate contentKey="stockOrder.home.title">Delivery of stocks</Translate>
+          <span style={{ float: 'right' }}>
+            <Button tag={Link} to={`${match.url}/new`} replace color="primary">
+              <FontAwesomeIcon icon="plus" />{' '}
+              <span className="d-none d-md-inline">
+                <Translate contentKey="stockOrder.home.createLabel">New delivery order</Translate>
+              </span>
+            </Button>
+          </span>
+        </h2>
+        <DataTable
+          value={stockOrders}
+          className="p-datatable-customers"
+          dataKey="id"
+          rowHover
+          paginator
+          rows={10}
+          emptyMessage="No customers found"
+          currentPageReportTemplate="{first} to {last} of {totalRecords}"
+          paginatorTemplate="FirstPageLink PrevPageLink NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+          rowsPerPageOptions={[10, 25, 50]}
+        >
+          <Column field="id" header={translate('global.field.id')} sortable filter filterPlaceholder={translate('global.field.id')} />
+          <Column
+            field="storage"
+            header={translate('stockOrder.storage')}
+            sortable
+            filter
+            filterPlaceholder={translate('stockOrder.storage')}
+          />
+          <Column
+            field="clientName"
+            header={translate('stockOrder.clientName')}
+            sortable
+            filter
+            filterPlaceholder={translate('stockOrder.clientName')}
+          />
+          <Column header="Action" body={actionBodyTemplate} bodyStyle={{ textAlign: 'left', overflow: 'visible' }} />
+        </DataTable>
+      </div>
+    </Card>
+  );
+};
+const mapStateToProps = (storeState: IRootState) => ({
+  stockOrders: storeState.stockOrder.stockOrders,
+  totalItems: storeState.stockOrder.totalItems,
+});
+const mapDispatchToProps = { getOpenStockOrders };
+type StateProps = ReturnType<typeof mapStateToProps>;
+type DispatchProps = typeof mapDispatchToProps;
+export default connect(mapStateToProps, mapDispatchToProps)(StockOrder);
+
